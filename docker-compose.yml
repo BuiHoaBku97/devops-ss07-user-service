@@ -1,0 +1,38 @@
+services:
+  cart-db:
+    image: postgres:17-alpine
+    container_name: cart-db-container
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=cartdb
+      - POSTGRES_USER=${CORE_DB_USERNAME}
+      - POSTGRES_PASSWORD=${CORE_DB_PW}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT}:${CORE_DB_PORT}"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cartdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  user-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: user-service-container
+    restart: unless-stopped
+    environment:
+      - CORE_DB_URL=${CORE_DB_URL}
+      - CORE_DB_USERNAME=${CORE_DB_USERNAME}
+      - CORE_DB_PW=${CORE_DB_PW}
+      - USER_SERVICE_PORT=${USER_SERVICE_PORT}
+    depends_on:
+      cart-db:
+        condition: service_healthy
+    ports:
+      - "${USER_SERVICE_PORT}:${USER_SERVICE_PORT}"
+
+volumes:
+    pg-data:
